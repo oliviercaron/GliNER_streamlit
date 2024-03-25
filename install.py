@@ -30,7 +30,7 @@ def process_row(row):
 
 # Apply the function to each text in the DataFrame with ThreadPoolExecutor
 with tqdm(total=len(df_tweets)) as pbar:
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         results = list(executor.map(process_row, df_tweets.to_dict('records')))
         pbar.update()
 
@@ -41,6 +41,6 @@ df_entities = pd.DataFrame(results)
 df_output = pd.concat([df_tweets, df_entities], axis=1)
 
 # Save the DataFrame to an Excel file
-df_output.to_excel("entities_output_fastestttttttttttt.xlsx", index=False)
+df_output.to_excel("entities_output_fastest2.xlsx", index=False)
 
 print(df_output)
