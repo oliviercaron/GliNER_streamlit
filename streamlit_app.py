@@ -4,6 +4,8 @@ from io import BytesIO
 from gliner import GLiNER
 from gliner_file import run_ner
 
+st.set_page_config(page_title="GliNER", page_icon="🧊", layout="wide", initial_sidebar_state="expanded")
+
 # Load GLiNER model if not already loaded
 if 'gliner_model' not in st.session_state:
     with st.spinner('Loading GLiNER model... Please wait.'):
@@ -36,13 +38,12 @@ def perform_ner(filtered_df, selected_column, labels_list):
 
         progress = index / filtered_df.height
         progress_bar.progress(progress)
-        progress_text.text(f"Progress: {progress * 100:.2f}%")
+        progress_text.text(f"Progress: {index}/{filtered_df.height} - {progress * 100:.0f}%")
 
     progress_text.text("Processing complete!" if not st.session_state.stop_processing else "")
     return filtered_df.with_columns(list(series_dict.values()))
 
 def main():
-    st.set_page_config(page_title="GliNER", page_icon="🧊", layout="wide", initial_sidebar_state="expanded")
 
     st.title("Online NER with GliNER")
     st.markdown("Prototype v0.1")
