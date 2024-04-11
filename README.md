@@ -2,15 +2,13 @@
 
 Welcome to the GliNER Streamlit application repository! This project is designed to offer a user-friendly interface for Named Entity Recognition (NER) tasks using the GliNER model.
 
+You can find the GLiNER repository here: https://github.com/urchade/GLiNER
+and the paper: https://arxiv.org/abs/2311.08526
+
+
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
-
-### Prerequisites
-
-Before you begin, ensure you have the following installed:
-- Python (version 3.7 or later)
-- Git
+How to run the app on your local machine.
 
 ### Cloning the Repository
 
@@ -44,7 +42,7 @@ Your default web browser should automatically open to the Streamlit application'
 The GliNER Streamlit application allows users to perform NER tasks in a few simple steps:
 
 1. **Upload Your Data**: You can upload text files (CSV or Excel)
-2. **Select Your Options**: You can choose the column to analyze, filter it and specify labels for entity recognition.
+2. **Select Your Options**: You can choose the column to analyze, filter it, and specify labels for entity recognition.
 3. **View Results**: The application processes the text and displays the identified entities, which users can then review and download.
 
 
