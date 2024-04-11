@@ -1,6 +1,6 @@
 # GliNER Streamlit Application
 
-Welcome to the GliNER Streamlit application repository! This project is designed to offer a user-friendly interface for Named Entity Recognition (NER) tasks using the GliNER model. With this application, users can easily upload text data and identify entities based on their specified labels.
+Welcome to the GliNER Streamlit application repository! This project is designed to offer a user-friendly interface for Named Entity Recognition (NER) tasks using the GliNER model.
 
 ## Getting Started
 
@@ -61,15 +61,10 @@ Your default web browser should automatically open to the Streamlit application'
 
 The GliNER Streamlit application allows users to perform NER tasks in a few simple steps:
 
-1. **Upload Your Data**: Users can upload text files (CSV or Excel) containing the data they wish to analyze.
-2. **Select Your Options**: Users choose the column to analyze and specify labels for entity recognition.
+1. **Upload Your Data**: You can upload text files (CSV or Excel)
+2. **Select Your Options**: You can choose the column to analyze, filter it and specify labels for entity recognition.
 3. **View Results**: The application processes the text and displays the identified entities, which users can then review and download.
 
-The application utilizes the GLiNER model for NER, providing support for various entity types and the flexibility to handle custom labels specified by the user.
-
-## Contributing
-
-We welcome contributions to the GliNER Streamlit application! Please read `CONTRIBUTING.md` for details on our code of conduct and the process for submitting pull requests to us.
 
 ## License
 
