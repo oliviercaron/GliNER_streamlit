@@ -3,6 +3,7 @@
 Welcome to the GliNER Streamlit application repository! This project is designed to offer a user-friendly interface for Named Entity Recognition (NER) tasks using the GliNER model.
 
 You can find the GLiNER repository here: https://github.com/urchade/GLiNER
+
 and the paper: https://arxiv.org/abs/2311.08526
 
 
