@@ -17,26 +17,8 @@ Before you begin, ensure you have the following installed:
 To clone the repository and navigate into it, run the following commands in your terminal:
 
 ```bash
-git clone https://github.com/yourusername/GliNER_streamlit.git
+git clone https://github.com/oliviercaron/GliNER_streamlit/
 cd GliNER_streamlit
-```
-
-### Setting Up Your Environment
-
-It's recommended to use a virtual environment to keep dependencies required by the project separate from your other Python projects.
-
-Create and activate a virtual environment (for Unix/macOS):
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-For Windows:
-
-```bash
-py -m venv venv
-.\venv\Scripts\activate
 ```
 
 ### Installing Dependencies
@@ -52,7 +34,7 @@ pip install -r requirements.txt
 With the dependencies installed, you can run the Streamlit application locally:
 
 ```bash
-streamlit run streamlit_app.py
+streamlit run app.py
 ```
 
 Your default web browser should automatically open to the Streamlit application's URL, typically `http://localhost:8501`. If it doesn't, you can manually navigate to the URL displayed in your terminal.
