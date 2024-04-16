@@ -6,8 +6,6 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 import os
 
-print("Current Working Directory:", os.getcwd())
-
 def load_data(file_path):
     if file_path.endswith('.xlsx'):
         return pd.read_excel(file_path)
@@ -30,33 +28,39 @@ def process_row(row, model, labels, threshold, column_name):
     # Process a single row of data
     return extract_entities(row[column_name], model, labels, threshold)
 
-def process_entities(file_path, labels, threshold, column_name, model_name):
-    # Check if the file exists before proceeding
-    if not os.path.exists(file_path):
-        print(f"Error: The file {file_path} does not exist.")
-        return
-
+def process_entities(file_path, labels, threshold, column_name, model_name, output_base):
     start_time = time.time()
-    df = load_data(file_path)
-    model = GLiNER.from_pretrained(model_name)
+    try:
+        df = pd.read_csv(file_path)
+    except Exception as e:
+        print(f"Failed to load data from {file_path}: {e}")
+        return
+    
+    try:
+        model = GLiNER.from_pretrained(model_name)
+    except Exception as e:
+        print(f"Failed to load the model {model_name}: {e}")
+        return
     model.eval()
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        results = list(tqdm(executor.map(lambda row: process_row(row, model, labels, threshold, column_name), df.to_dict('records')), total=len(df)))
-        #results = list(tqdm(executor.map(lambda row: process_row(row, model, labels, threshold, column_name), df.to_dict('records'))))
+    try:
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            results = list(tqdm(executor.map(lambda row: process_row(row, model, labels, threshold, column_name), df.to_dict('records')), total=len(df)))
+        df_entities = pd.DataFrame(results)
+        df_output = pd.concat([df, df_entities], axis=1)
+    except Exception as e:
+        print(f"Error during entity processing: {e}")
+        return
 
-    df_entities = pd.DataFrame(results)
-    df_output = pd.concat([df, df_entities], axis=1)
-
-    output_filename = "Dataframe_VF_datacovid_GliNER_part2_entities_output.csv"
-    df_output.to_csv(output_filename, index=False)
-    df_output.to_excel("Dataframe_VF_datacovid_GliNER_part2_entities_output.xlsx", index=False, engine='xlsxwriter', engine_kwargs={'options': {'strings_to_urls': False}})
+    output_csv = f"{output_base}_entities_output.csv"
+    output_xlsx = f"{output_base}_entities_output.xlsx"
+    df_output.to_csv(output_csv, index=False)
+    df_output.to_excel(output_xlsx, index=False)
 
     elapsed_time = time.time() - start_time
-    print(df_output)
-    print(f"Processing took {timedelta(seconds=elapsed_time)}.")
+    print(f"Processing of {output_csv} took {timedelta(seconds=elapsed_time)}.")
 
-file_path = "test_data/Dataframe_VF_datacovid_GliNER_part2.csv"
+
 labels = [
     'vaccine name',            # Specific names of COVID-19 vaccines
     'product name',            # Names of other pharmaceutical products mentioned
@@ -89,7 +93,15 @@ labels = [
     #'vaccine diplomacy',       # Strategies used by governments to influence or assist other countries through vaccine distribution
     #'intellectual property'    # Discussions on intellectual property rights related to vaccines, including patents and licensing agreements
 ]
+
 threshold = 0.3
 column_name = 'text'
 model_name = "urchade/gliner_multi-v2.1"
-process_entities(file_path, labels, threshold, column_name, model_name)
+base_dir = "C:/Users/Olivier/Documents/GitHub/GliNER_streamlit/test_data"  # Adjust path for files
+base_output = "C:/Users/Olivier/Documents/GitHub/GliNER_streamlit/output_data"  # Adjust path for output files
+parts = ['part1', 'part2', 'part3', 'part4']
+
+for part in parts:
+    file_path = os.path.join(base_dir, f"Dataframe_VF_datacovid_GliNER_{part}.csv")
+    output_base = os.path.join(base_output, f"Dataframe_VF_datacovid_GliNER_{part}")
+    process_entities(file_path, labels, threshold, column_name, model_name, output_base)
