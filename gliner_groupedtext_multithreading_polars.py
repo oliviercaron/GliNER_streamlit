@@ -1,44 +1,65 @@
 import sys
-import pandas as pd
+import polars as pl
 import time
 from datetime import timedelta
 from gliner import GLiNER
 from tqdm import tqdm
-import concurrent
 from concurrent.futures import ThreadPoolExecutor
 import os
+import concurrent
 
 def load_data(file_path, sample=False, n=None):
-    # Determine the file type and read the data
     if file_path.endswith('.xlsx'):
-        df = pd.read_excel(file_path)
+        df = pl.read_excel(file_path)
     elif file_path.endswith('.csv'):
         try:
-            df = pd.read_csv(file_path, encoding='utf-8-sig', on_bad_lines='skip', low_memory=False)
-        except UnicodeDecodeError:
-            df = pd.read_csv(file_path, encoding='iso-8859-1')
+            df = pl.read_csv(
+                file_path,
+                infer_schema_length=0,  # infer_schema_length=0 as polars uses string as default for columns type when reading csvs from https://stackoverflow.com/questions/71106690/polars-specify-dtypes-for-all-columns-at-once-in-read-csv
+                #dtypes=dtypes, Otherwise we can specify dtypes for each column, which can be useful when we know the data types of the columns in advance, for instance utf8 for ids because it kept adding zeros to the ids when reading them as integers
+                ignore_errors=True,
+                low_memory=False,
+                truncate_ragged_lines=True
+            )
+        except Exception as e:
+            raise Exception(f"Failed to read CSV: {e}")
     else:
         raise ValueError("Unsupported file type. Please use a CSV or XLSX file.")
     
     if sample:
         if n is None:
             raise ValueError("Parameter 'n' must be specified if 'sample' is True.")
-        df = df.sample(n=n)
+        df = df.sample(n=n, with_replacement=False)
     elif n is not None:
         df = df.head(n)
     
     return df
 
 def extract_entities(text, model, labels, threshold):
-    # Extract named entities from the text
-    entities = model.predict_entities(text, labels, threshold=threshold)
+    entities = model.predict_entities(text, labels=labels, threshold=threshold)
     entities_by_label = {label: [] for label in labels}
     for entity in entities:
         entities_by_label[entity["label"]].append(entity["text"])
-    return {label: ', '.join(texts) if texts else '' for label, texts in entities_by_label.items()}
+    return entities_by_label
 
 def process_row(text, model, labels, threshold):
     return extract_entities(text, model, labels, threshold)
+
+def update_df_with_results(df, unique_texts, results, labels, column_name):
+    # Ensure all label columns exist in the DataFrame
+    for label in labels:
+        if label not in df.columns:
+            df = df.with_columns(pl.lit(None).alias(label))
+
+    # Update DataFrame with results
+    for i, result in enumerate(results):
+        for label in labels:
+            update_condition = df[column_name] == unique_texts[i]
+            new_values = pl.lit(', '.join(result.get(label, [])))
+            df = df.with_columns(
+                pl.when(update_condition).then(new_values).otherwise(df[label]).alias(label)
+            )
+    return df
 
 def process_entities(file_path, labels, threshold, column_name, model_name):
     if not os.path.exists(file_path):
@@ -47,32 +68,30 @@ def process_entities(file_path, labels, threshold, column_name, model_name):
 
     start_time = time.time()
     df = load_data(file_path, sample=False, n=100)
-    if df.empty:
+    if df.height == 0:
         print("No data to process.")
         return
 
     model = GLiNER.from_pretrained(model_name)
     model.eval()
 
-    grouped_texts = df.groupby(column_name).size().reset_index(name='count')
-    unique_texts = grouped_texts[column_name].tolist()
+    grouped_texts = df.group_by(column_name).agg(pl.len().alias('count'))
+    unique_texts = grouped_texts.get_column(column_name).to_list()
 
+    print("Processing unique texts...")
+    results = []
     with ThreadPoolExecutor(max_workers=4) as executor:
-        unique_results = list(tqdm(executor.map(lambda text: process_row(text, model, labels, threshold), unique_texts), total=len(unique_texts)))
+        futures = [executor.submit(process_row, text, model, labels, threshold) for text in unique_texts]
+        for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures)):
+            results.append(future.result())
+    df = update_df_with_results(df, unique_texts, results, labels, column_name)
 
-    results_dict = dict(zip(unique_texts, unique_results))
-    for label in labels:
-        df[label] = df[column_name].map(lambda x: results_dict[x].get(label, ''))
-
-    output_dir = "output_data"
-    os.makedirs(output_dir, exist_ok=True)
-    
     base_name = os.path.splitext(os.path.basename(file_path))[0]
-    output_csv_filename = os.path.join(output_dir, f"{base_name}_entities_output.csv")
-    output_xlsx_filename = os.path.join(output_dir, f"{base_name}_entities_output.xlsx")
+    output_csv_filename = f"{base_name}_entities_output.csv"
+    output_xlsx_filename = f"{base_name}_entities_output.xlsx"
 
-    df.to_csv(output_csv_filename, index=False)
-    df.to_excel(output_xlsx_filename, index=False, engine='xlsxwriter')
+    df.write_csv(output_csv_filename)
+    df.write_excel(output_xlsx_filename, autofit=True)
 
     elapsed_time = time.time() - start_time
     print(f"Processing took {timedelta(seconds=elapsed_time)}.")
