@@ -75,7 +75,7 @@ def process_entities(file_path, labels, threshold, column_name, model_name):
     unique_texts = df[column_name].unique().tolist()
 
     results = []
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=2) as executor:
         futures = [
             executor.submit(process_row, text, model, labels, threshold)
             for text in unique_texts
