@@ -40,7 +40,7 @@ def load_data(file):
             st.error("Erreur lors du chargement des données :")
             st.error(str(e))
             return None
-
+            
 def load_excel(file):
     """
     Gère le chargement des fichiers Excel en mode tolérant aux erreurs.
