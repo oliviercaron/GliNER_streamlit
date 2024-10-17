@@ -1,16 +1,25 @@
 from gliner import GLiNER
+from typing import List
 
-def run_ner(model, text, labels_list, threshold=0.4):
-    # Utiliser le modèle déjà chargé pour prédire les entités
-    entities = model.predict_entities(text, labels_list, threshold=threshold)
+def run_ner(model, texts: List[str], labels_list: List[str], threshold=0.4):
+    """
+    Exécute la reconnaissance d'entités nommées (NER) sur une liste de textes.
 
-    # Initialiser le dictionnaire pour stocker les résultats
-    ner_results = {label: [] for label in labels_list}
+    Paramètres:
+    - model: modèle GLiNER chargé.
+    - texts: liste de textes à analyser.
+    - labels_list: liste des labels NER à détecter.
+    - threshold: seuil de confiance pour les prédictions.
 
-    # Itérer sur les entités reconnues et les stocker dans le dictionnaire
-    for entity in entities:
-        if entity["label"] in ner_results:
-            # Ajouter le texte de l'entité à la liste correspondante pour le label
-            ner_results[entity["label"]].append(entity["text"])
-
+    Retourne:
+    - ner_results: liste de dictionnaires contenant les entités détectées pour chaque texte.
+    """
+    ner_results = []
+    for text in texts:
+        try:
+            # Prédire les entités pour le texte
+            entities = model.predict_entities(text, labels_list, threshold=threshold)
+            ner_results.append(entities)
+        except Exception as e:
+            ner_results.append([])
     return ner_results
