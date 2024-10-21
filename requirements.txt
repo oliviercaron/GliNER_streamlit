@@ -1,6 +1,10 @@
-gliner==0.1.3
-streamlit==1.31.1
+gliner==0.2.13
+streamlit==1.37.0
 polars==0.20.10
 openpyxl==3.1.2
 scipy==1.10.1
 xlsx2csv==0.8.2
+torch==2.2.0
+cuda-python==11.8.3
+streamlit-tags==1.2.8
+XlsxWriter==3.2.0
