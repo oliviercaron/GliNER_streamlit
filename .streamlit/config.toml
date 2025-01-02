@@ -1,4 +1,4 @@
 [server]
 runOnSave = true
-maxUploadSize=400
-maxMessageSize=400
+maxUploadSize=2147483647
+maxMessageSize=2147483647
