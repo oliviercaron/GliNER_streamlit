@@ -10,6 +10,7 @@ import torch
 import platform
 from typing import List
 from streamlit_tags import st_tags  # Importing the st_tags component
+from transformers import AutoTokenizer
 
 # Streamlit page configuration
 st.set_page_config(
@@ -18,6 +19,41 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# --- List of official GLiNER models (you can adapt or extend this list) ---
+OFFICIAL_MODELS = [
+    "urchade/gliner_base",         # v0
+    "urchade/gliner_multi",        # v0
+    "urchade/gliner_small-v1",     # v1
+    "urchade/gliner_medium-v1",    # v1
+    "urchade/gliner_large-v1",     # v1
+    "urchade/gliner_small-v2",     # v2
+    "urchade/gliner_medium-v2",    # v2
+    "urchade/gliner_large-v2",     # v2
+    "urchade/gliner_small-v2.1",   # v2.1
+    "urchade/gliner_medium-v2.1",  # v2.1
+    "urchade/gliner_large-v2.1",   # v2.1
+    "urchade/gliner_multi-v2.1"    # v2.1
+]
+
+# --- Function to load a custom fine-tuned model from a local path ---
+def load_custom_model(model_path):
+    # Comments in English: This function loads a locally fine-tuned model.
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True, local_files_only=True)
+    model = GLiNER.from_pretrained(model_path, load_tokenizer=False).to(device)
+    model.data_processor.transformer_tokenizer = tokenizer
+    return model
+
+# --- Function to discover custom models inside the "models" folder ---
+def get_custom_models_list(models_root="models"):
+    # Comments in English: This function returns the subdirectories inside the 'models' folder as potential custom models.
+    if not os.path.isdir(models_root):
+        return []
+    return [
+        d for d in os.listdir(models_root)
+        if os.path.isdir(os.path.join(models_root, d))
+    ]
 
 # Function to load data from the uploaded file
 @st.cache_data
@@ -86,20 +122,29 @@ def load_csv(file):
     except Exception as e:
         raise ValueError(f"Error reading the CSV file: {str(e)}")
 
+# --- Main model loader (handles both official and custom models) ---
 @st.cache_resource
-def load_model():
+def load_model(model_name):
     """
     Loads the GLiNER model into memory to avoid multiple reloads.
+    This function handles both official and custom models.
     """
     try:
         gpu_available = torch.cuda.is_available()
+        device = torch.device("cuda" if gpu_available else "cpu")
 
-        with st.spinner("Loading the GLiNER model... Please wait."):
-            device = torch.device("cuda" if gpu_available else "cpu")
-            model = GLiNER.from_pretrained(
-                "urchade/gliner_multi-v2.1"
-            ).to(device)
-            model.eval()
+        # Comments in English: If model_name is in OFFICIAL_MODELS, we load directly from Hugging Face.
+        # Otherwise, we assume it's a custom model in the "models" folder.
+        if model_name in OFFICIAL_MODELS:
+            with st.spinner(f"Loading official model: {model_name} ... Please wait."):
+                model = GLiNER.from_pretrained(model_name).to(device)
+        else:
+            # Comments in English: For custom model, the local path is "models/<model_name>" by default.
+            custom_model_path = os.path.join("models", model_name)
+            with st.spinner(f"Loading custom model from {custom_model_path} ... Please wait."):
+                model = load_custom_model(custom_model_path)
+
+        model.eval()
 
         if gpu_available:
             device_name = torch.cuda.get_device_name(0)
@@ -109,6 +154,7 @@ def load_model():
             st.warning(f"No GPU detected. Using CPU: {cpu_name}")
 
         return model
+
     except Exception as e:
         st.error("Error loading the model:")
         st.error(str(e))
@@ -145,6 +191,7 @@ def perform_ner(filtered_df, selected_column, labels_list, threshold):
             progress_bar.progress(progress)
             progress_text.text(f"Progress: {index}/{total_rows} - {progress * 100:.0f}% (Elapsed time: {elapsed_time:.2f}s)")
 
+        # Comments in English: After collecting all NER results, we add one column per label.
         for label in labels_list:
             extracted_entities = []
             for entities in ner_results_list:
@@ -183,7 +230,19 @@ def main():
     if "labels_list" not in st.session_state:
         st.session_state.labels_list = []
 
-    st.session_state.gliner_model = load_model()
+    # -- Model selection in the sidebar --
+    st.sidebar.write("## Model Selection")
+    custom_models = get_custom_models_list("models")
+    all_models_choices = OFFICIAL_MODELS + custom_models
+
+    # Comments in English: If you wish to set a specific default model, you can change the 'index' parameter.
+    selected_model = st.sidebar.selectbox(
+        "Select your GLiNER model:",
+        all_models_choices,
+        index=all_models_choices.index("urchade/gliner_multi-v2.1") if "urchade/gliner_multi-v2.1" in all_models_choices else 0
+    )
+
+    st.session_state.gliner_model = load_model(selected_model)
     if st.session_state.gliner_model is None:
         return
 
@@ -225,7 +284,7 @@ def main():
     with col3:
         pass
     with col4:
-        next = st.button("Next ➡️")
+        next_btn = st.button("Next ➡️")
     with col5:
         last = st.button("Last ⏭️")
 
@@ -234,7 +293,7 @@ def main():
     elif previous:
         if st.session_state.current_page > 1:
             update_page(st.session_state.current_page - 1)
-    elif next:
+    elif next_btn:
         if st.session_state.current_page < total_pages:
             update_page(st.session_state.current_page + 1)
     elif last:
@@ -291,14 +350,14 @@ def main():
                 st.download_button(
                     label="📥 Download as Excel",
                     data=to_excel(updated_df),
-                    file_name="ner_results.xlsx"#,
+                    file_name="ner_results.xlsx",
                     #mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 )
             with download_col2:
                 st.download_button(
                     label="📥 Download as CSV",
                     data=to_csv(updated_df),
-                    file_name="ner_results.csv"#,
+                    file_name="ner_results.csv",
                     #mime="text/csv",
                 )
 
